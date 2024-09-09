@@ -416,6 +416,7 @@ zfs_clear_setid_bits_if_necessary(zfsvfs_t *zfsvfs, znode_t *zp, cred_t *cr,
  * Timestamps:
  *	ip - ctime|mtime updated if byte count > 0
  */
+//[maxing COMMENT]: z_node代表zfs中的inode,zfs_uio_t 是偏移量和长度
 int
 zfs_write(znode_t *zp, zfs_uio_t *uio, int ioflag, cred_t *cr)
 {
@@ -544,6 +545,7 @@ zfs_write(znode_t *zp, zfs_uio_t *uio, int ioflag, cred_t *cr)
 	 * in a separate transaction; this keeps the intent log records small
 	 * and allows us to do more fine-grained space accounting.
 	 */
+	//[maxing COMMENT]: 文件分割为多个文件chunk
 	while (n > 0) {
 		woff = zfs_uio_offset(uio);
 
@@ -613,6 +615,7 @@ zfs_write(znode_t *zp, zfs_uio_t *uio, int ioflag, cred_t *cr)
 		/*
 		 * Start a transaction.
 		 */
+		//[maxing COMMENT]: 创建一个事务，表示准备更改操作，是否有空闲的空间
 		dmu_tx_t *tx = dmu_tx_create(zfsvfs->z_os);
 		dmu_tx_hold_sa(tx, zp->z_sa_hdl, B_FALSE);
 		dmu_buf_impl_t *db = (dmu_buf_impl_t *)sa_get_db(zp->z_sa_hdl);
@@ -620,6 +623,7 @@ zfs_write(znode_t *zp, zfs_uio_t *uio, int ioflag, cred_t *cr)
 		dmu_tx_hold_write_by_dnode(tx, DB_DNODE(db), woff, nbytes);
 		DB_DNODE_EXIT(db);
 		zfs_sa_upgrade_txholds(tx, zp);
+		//[maxing COMMENT]: 等到喜爱一个可用的事务组，检查是否有足够空间和内存
 		error = dmu_tx_assign(tx, TXG_WAIT);
 		if (error) {
 			dmu_tx_abort(tx);
@@ -648,6 +652,7 @@ zfs_write(znode_t *zp, zfs_uio_t *uio, int ioflag, cred_t *cr)
 		if (abuf == NULL) {
 			tx_bytes = zfs_uio_resid(uio);
 			zfs_uio_fault_disable(uio, B_TRUE);
+			//[maxing COMMENT]: 数据从uio写入到DMU
 			error = dmu_write_uio_dbuf(sa_get_db(zp->z_sa_hdl),
 			    uio, nbytes, tx);
 			zfs_uio_fault_disable(uio, B_FALSE);
@@ -755,6 +760,7 @@ zfs_write(znode_t *zp, zfs_uio_t *uio, int ioflag, cred_t *cr)
 		 * zfs_clear_setid_bits_if_necessary must precede any of
 		 * the TX_WRITE records logged here.
 		 */
+		//[maxing COMMENT]: zfs log写入
 		zfs_log_write(zilog, tx, TX_WRITE, zp, woff, tx_bytes, commit,
 		    NULL, NULL);
 
@@ -782,6 +788,7 @@ zfs_write(znode_t *zp, zfs_uio_t *uio, int ioflag, cred_t *cr)
 	}
 
 	if (commit)
+		//[maxing COMMENT]:  zfs intent log写入，更改数据写到磁盘之前必须先保证日志落盘
 		zil_commit(zilog, zp->z_id);
 
 	const int64_t nwritten = start_resid - zfs_uio_resid(uio);

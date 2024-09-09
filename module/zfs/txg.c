@@ -610,6 +610,7 @@ txg_sync_thread(void *arg)
 		/*
 		 * Dispatch commit callbacks to worker threads.
 		 */
+		//[maxing COMMENT]: 找到脏的数据集，call dsl_datasetsync->dmu_objset_sync->zio pipeline
 		txg_dispatch_callbacks(dp, txg);
 	}
 }
